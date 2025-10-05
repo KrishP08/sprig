@@ -1,11 +1,16 @@
-name: TypeScript Check
+name: TypeScript Check and Metadata Generation
 
 on:
   pull_request:
     types: [opened, reopened, edited]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 jobs:
-  # Test job
   build:
     runs-on: ubuntu-latest
     steps:
@@ -18,10 +23,18 @@ jobs:
           node-version: 20.x
 
       - name: Install Dependencies
-        run: |
-          yarn install
+        run: yarn install
 
-      - name: Build Project
-        run: |
-          node .github/scripts/generate-metadata.js
-          yarn tsc --noEmit
+      - name: Generate Metadata
+        run: node .github/scripts/generate-metadata.js
+
+      - name: Type Check
+        if: github.event_name == 'pull_request'
+        run: yarn tsc --noEmit
+
+      - name: Commit and Push Metadata
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update game metadata"
+          file_pattern: games/metadata.json
